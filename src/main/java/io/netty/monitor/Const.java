@@ -33,8 +33,8 @@ public interface Const {
   Integer STRAP_LINE_SIZE = 10;
   String SERVER_ADDRESS = "localhost";
   String CRISPY_VERSION = "(v1.0.0 RELEASE)";
-  String BANNER_TEXT = "iot";
-  String CRISPY_FRAMEWORK = " :: Iot Framework :: ";
+  String BANNER_TEXT = "NettyMonitor";
+  String CRISPY_FRAMEWORK = " :: Netty Monitor :: ";
   String SPACE = " ";
   String SERVER_THREAD_NAME = "（'-'*)";
   String PATH_SERVER_PORT = "server.port";
