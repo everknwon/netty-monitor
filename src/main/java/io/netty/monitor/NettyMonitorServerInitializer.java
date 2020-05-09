@@ -31,12 +31,20 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.DelimiterBasedFrameDecoder;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
+import io.netty.handler.ssl.SslContext;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.netty.util.CharsetUtil;
 
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class NettyMonitorServerInitializer extends ChannelInitializer<SocketChannel> {
+  private final SslContext sslContext;
+
+  public NettyMonitorServerInitializer(SslContext sslContext) {
+    this.sslContext = sslContext;
+  }
+
   @Override
   protected void initChannel(SocketChannel ch) {
     ChannelPipeline channelPipeline = ch.pipeline();
@@ -44,6 +52,11 @@ public class NettyMonitorServerInitializer extends ChannelInitializer<SocketChan
     channelPipeline.addLast(new StringDecoder(CharsetUtil.UTF_8));
     channelPipeline.addLast(new StringEncoder(CharsetUtil.UTF_8));
     channelPipeline.addLast(new DelimiterBasedFrameDecoder(1024, delimiter));
+
+    if (!Objects.isNull(sslContext)){
+      channelPipeline.addLast(sslContext.newHandler(ch.alloc()));
+    }
+
     channelPipeline.addLast(new IdleStateHandler(45, 0, 0, TimeUnit.SECONDS));
     channelPipeline.addLast(new NettyMonitorServerHandler());
   }

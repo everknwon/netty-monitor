@@ -28,6 +28,9 @@ import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
 import io.netty.monitor.banner.BannerFont;
 import io.netty.monitor.utils.SystemInfoUtils;
 import io.netty.util.ResourceLeakDetector;
@@ -37,6 +40,14 @@ import oshi.SystemInfo;
 import oshi.hardware.ComputerSystem;
 import oshi.hardware.Firmware;
 import oshi.hardware.HardwareAbstractionLayer;
+
+import javax.net.ssl.SSLException;
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.cert.CertificateException;
+
+import static io.netty.monitor.Const.*;
 
 public class NettyMonitorServer implements Server {
   private static final Logger log = LoggerFactory.getLogger(NettyMonitorServer.class);
@@ -53,6 +64,7 @@ public class NettyMonitorServer implements Server {
   private EventLoopGroup bossGroup;
   private EventLoopGroup workerGroup;
   private Channel channel;
+  private SslContext sslContext;
 
   /** Service startup status, using volatile to ensure threads are visible. */
   private volatile boolean stop = false;
@@ -85,8 +97,46 @@ public class NettyMonitorServer implements Server {
     log.info("Starting service [Netty]");
     log.info("Starting Iot Server: Netty/4.1.45.Final");
 
+    this.enableSSL();
     this.startServer(startMs);
     this.shutdownHook();
+  }
+
+  private void enableSSL() throws CertificateException, SSLException {
+    log.info("Check if the ssl configuration is enabled.");
+
+    final Boolean ssl = environment.getBoolean(PATH_SERVER_SSL, SERVER_SSL);
+    final SelfSignedCertificate ssc = new SelfSignedCertificate();
+
+    if (ssl) {
+      log.info("Ssl configuration takes effect :{}", true);
+
+      final String sslCert = this.environment.get(PATH_SERVER_SSL_CERT, null);
+      final String sslPrivateKey = this.environment.get(PATH_SERVER_SSL_PRIVATE_KEY, null);
+      final String sslPrivateKeyPass = this.environment.get(PATH_SERVER_SSL_PRIVATE_KEY_PASS, null);
+
+      log.info("SSL CertChainFile  Path: {}", sslCert);
+      log.info("SSL PrivateKeyFile Path: {}", sslPrivateKey);
+      log.info("SSL PrivateKey Pass: {}", sslPrivateKeyPass);
+
+      this.sslContext = SslContextBuilder.forServer(setKeyCertFileAndPriKey(sslCert, ssc.certificate()),
+              setKeyCertFileAndPriKey(sslPrivateKey, ssc.privateKey()), sslPrivateKeyPass).build();
+    }
+
+    log.info("Current netty server ssl startup status: {}", ssl);
+    log.info("A valid ssl connection configuration is not configured and is rolled back to the default connection state.");
+  }
+
+  /**
+   * Use the configured path if the certificate and private key are
+   * configured, otherwise use the default configuration
+   *
+   * @param keyPath
+   * @param defaultFilePath
+   * @return
+   */
+  private File setKeyCertFileAndPriKey(String keyPath, File defaultFilePath) {
+    return keyPath != null ? Paths.get(keyPath).toFile() : defaultFilePath;
   }
 
   /**
@@ -98,10 +148,10 @@ public class NettyMonitorServer implements Server {
   private void startServer(long startMs) throws Exception {
     ResourceLeakDetector.setLevel(ResourceLeakDetector.Level.DISABLED);
 
-    this.serverBootstrap.childHandler(new NettyMonitorServerInitializer());
+    this.serverBootstrap.childHandler(new NettyMonitorServerInitializer(sslContext));
 
-    int acceptThreadCount = environment.getInteger(Const.PATH_SERVER_NETTY_ACCEPT_THREAD_COUNT, Const.DEFAULT_ACCEPT_THREAD_COUNT);
-    int ioThreadCount = environment.getInteger(Const.PATH_SERVER_NETTY_IO_THREAD_COUNT, Const.DEFAULT_IO_THREAD_COUNT);
+    int acceptThreadCount = environment.getInteger(PATH_SERVER_NETTY_ACCEPT_THREAD_COUNT, DEFAULT_ACCEPT_THREAD_COUNT);
+    int ioThreadCount = environment.getInteger(PATH_SERVER_NETTY_IO_THREAD_COUNT, DEFAULT_IO_THREAD_COUNT);
 
     NettyServerGroup nettyServerGroup = EventLoopKit.nioGroup(acceptThreadCount, ioThreadCount);
     this.bossGroup = nettyServerGroup.getBossGroup();
