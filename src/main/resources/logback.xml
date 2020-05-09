@@ -10,9 +10,9 @@
     <appender name="STDOUT"
               class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
-            <layout class="org.nettyMonitor.monitor.internal.ansi.logback.EasyPatternLayout">
+            <layout class="io.netty.monitor.ansi.logback.EasyPatternLayout">
                 <pattern>
-                    ${org.nettyMonitor.logging.console.pattern:-${STDOUT_PATTERN}}
+                    ${org.netty.monitor.logging.console.pattern:-${STDOUT_PATTERN}}
                 </pattern>
             </layout>
         </encoder>
