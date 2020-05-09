@@ -65,25 +65,25 @@ public final class NettyMonitor {
   }
 
   public NettyMonitor needClientAuth(boolean needClientAuth) {
-    this.environment.add(PATH_SERVER_SSL, needClientAuth);
+    this.environment.add(PATH_NEED_CLIENT_AUTH, needClientAuth);
     return this;
   }
 
   public NettyMonitor keystorePath(String keystorePath) {
     requireNonNull(keystorePath, "keystore path cannot be null");
-    this.environment.add(PATH_SERVER_SSL, keystorePath);
+    this.environment.add(PATH_SERVER_SSL_PRIVATE_KEY, keystorePath);
     return this;
   }
 
   public NettyMonitor caCertificatePath(String caCertificatePath) {
     requireNonNull(caCertificatePath, "Certificate path cannot be null");
-    this.environment.add(PATH_SERVER_SSL, caCertificatePath);
+    this.environment.add(PATH_SERVER_SSL_CERT, caCertificatePath);
     return this;
   }
 
   public NettyMonitor certificatePassword(char[] certificatePassword) {
     requireNonNull(certificatePassword, "Certificate password must be set");
-    this.environment.add(PATH_SERVER_SSL, certificatePassword);
+    this.environment.add(PATH_SERVER_SSL_PRIVATE_KEY_PASS, certificatePassword);
     return this;
   }
 

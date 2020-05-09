@@ -46,6 +46,7 @@ public interface Const {
   String PATH_SERVER_CONTENT_COMPRESSOR = "server.autoCompression";
   String PATH_SERVER_PROFILE = "server.profile";
   String PATH_SERVER_BOOT_CONFIG = "server.boot.conf";
+  String PATH_NEED_CLIENT_AUTH = "server.needClientAuth";
 
   // netty setting
   String PATH_SERVER_SSL_CERT = "server.ssl.cert-path";
