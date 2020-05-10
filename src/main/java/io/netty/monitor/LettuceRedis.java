@@ -104,7 +104,6 @@ public class LettuceRedis<K, V> implements RedisCodec<K, V> {
     return (K) decodeByteBuffer(byteBuffer);
   }
 
-
   @SuppressWarnings("unchecked")
   @Override
   public V decodeValue(ByteBuffer byteBuffer) {
