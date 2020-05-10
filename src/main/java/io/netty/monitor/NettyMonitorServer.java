@@ -43,7 +43,6 @@ import oshi.hardware.HardwareAbstractionLayer;
 
 import javax.net.ssl.SSLException;
 import java.io.File;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.CertificateException;
 
@@ -184,6 +183,7 @@ public class NettyMonitorServer implements Server {
 
     log.info("Iot Server started on port(s): {} with context path ''", port);
     log.info("Started {} in {} ms (JVM running for {} ms)", nettyMonitor.bootName(), startUpTime, jvmStartTime);
+    log.info("The tcp service has been started, allowing connections to be established");
   }
 
   /**
