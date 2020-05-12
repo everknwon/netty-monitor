@@ -30,14 +30,7 @@ import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.reactive.RedisReactiveCommands;
 import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.codec.RedisCodec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
@@ -45,110 +38,81 @@ import java.util.Objects;
 import static io.netty.monitor.NettyMonitor.requireState;
 import static java.util.Objects.requireNonNull;
 
-public class LettuceRedis<K, V> implements RedisCodec<K, V> {
-  private static final Logger log = LoggerFactory.getLogger(LettuceRedis.class);
-
-  private final String withHost = "localhost";
-  private final Integer withPort = 6379;
-
+public class LettuceRedis<K, V> {
+  private String withHost = "localhost";
+  private Integer withPort = 6379;
+  private Duration withTimeout = Duration.of(10, ChronoUnit.SECONDS);
   private RedisURI redisUri = RedisURI.builder().withHost(withHost).withPort(withPort)
-          .withTimeout(Duration.of(10, ChronoUnit.SECONDS)).build();
+          .withTimeout(withTimeout).build();
 
   private final RedisClient redisClient = RedisClient.create(redisUri);
-  private StatefulRedisConnection<K, V> connection;
+  private StatefulRedisConnection<? extends K, ? extends V> connection;
 
   private LettuceRedis() {}
 
-  private LettuceRedis(RedisURI redisURI) {
-    requireNonNull(redisURI, "Redis uri configuration is required.");
+  public static LettuceRedis<Object, Object> newBuilder() {
+    return new LettuceRedis<>();
+  }
+
+  public LettuceRedis<K, V> redisURI(RedisURI redisURI) {
+    requireNonNull(redisURI, "The Redis uri configuration of redis is required.");
     requireState(redisURI.getPort() >= 0 && redisURI.getPort() <= 65533,
             "Port number must be available: %s", redisURI.getPort());
     Integer port = Objects.requireNonNullElse(redisURI.getPort(), withPort);
     redisURI.setPort(port);
     this.redisUri = redisURI;
+    return this;
   }
 
-  public static <K, V> LettuceRedis<K, V> newBuilder() {
-    return new LettuceRedis<>();
+  public LettuceRedis<K, V> withPort(int withPort) {
+    requireState(withPort >= 0 && withPort <= 65533,
+            "Port number must be available: %s", withPort);
+    this.withPort = withPort;
+    return this;
   }
 
-  public static <K, V> LettuceRedis<K, V> newBuilder(RedisURI redisURI) {
-    return new LettuceRedis<>(redisURI);
+  public LettuceRedis<K, V> withHost(String withHost) {
+    requireNonNull(withHost, "The connection address of redis is required.");
+    if (withHost.contains(":")) {
+      String[] split = withHost.split(":");
+      if (split[0].contains(".")) this.withHost = split[0];
+    }
+    this.withHost = withHost;
+    return this;
   }
 
-  public RedisCommands<K, V> build() {
-    this.connection = redisClient.connect(this);
+  public LettuceRedis<K, V> withTimeout(Duration duration) {
+    requireNonNull(duration, "Tne with timeout of redis is required. ");
+    this.withTimeout = duration;
+    return this;
+  }
+
+  public <K1 extends K, V1 extends V> RedisCommands<K1, V1> build() {
+    StatefulRedisConnection<K1, V1> connection = getGenericConnection();
     return connection.sync();
   }
 
-  public RedisAsyncCommands<K, V> buildAsync() {
-    this.connection = redisClient.connect(this);
+  public <K1 extends K, V1 extends V> RedisAsyncCommands<K1, V1> buildAsync() {
+    StatefulRedisConnection<K1, V1> connection = getGenericConnection();
     return connection.async();
   }
 
-  public RedisReactiveCommands<K, V> buildReactive() {
-    this.connection = redisClient.connect(this);
+  public <K1 extends K, V1 extends V> RedisReactiveCommands<K1, V1> buildReactive() {
+    StatefulRedisConnection<K1, V1> connection = getGenericConnection();
     return connection.reactive();
+  }
+
+  private <K1 extends K, V1 extends V> StatefulRedisConnection<K1, V1> getGenericConnection() {
+    RedisCodec<K1, V1> redisCodec = new LettuceRedisCodec<>();
+    StatefulRedisConnection<K1, V1> connect = redisClient.connect(redisCodec);
+    this.connection = connect;
+    return connect;
   }
 
   public void release() {
     if (!Objects.isNull(connection)) {
       this.connection.close();
       this.redisClient.shutdown();
-    }
-  }
-
-  @SuppressWarnings("unchecked")
-  @Override
-  public K decodeKey(ByteBuffer byteBuffer) {
-    return (K) decodeByteBuffer(byteBuffer);
-  }
-
-  @SuppressWarnings("unchecked")
-  @Override
-  public V decodeValue(ByteBuffer byteBuffer) {
-    return (V) decodeByteBuffer(byteBuffer);
-  }
-
-  @Override
-  public ByteBuffer encodeKey(K k) {
-    return encodeByteBuffer(k);
-  }
-
-  @Override
-  public ByteBuffer encodeValue(V v) {
-    return encodeByteBuffer(v);
-  }
-
-  private ByteBuffer encodeByteBuffer(Object o) {
-    try (ByteArrayOutputStream byteArrayOps =
-                 new ByteArrayOutputStream();
-         ObjectOutputStream objectOps =
-                 new ObjectOutputStream(byteArrayOps)) {
-      objectOps.writeObject(o);
-      long freeMemory = Runtime.getRuntime().freeMemory();
-      if (byteArrayOps.size() > freeMemory) {
-        throw new OutOfMemoryError("ByteBuffer needs to allocate more memory than freeMemory");
-      }
-      ByteBuffer byteBuffer = ByteBuffer.allocateDirect(byteArrayOps.size());
-      byteBuffer.put(byteArrayOps.toByteArray());
-      return byteBuffer;
-    } catch (Exception e) {
-      log.error("encode an exception occurs:{}", o, e);
-      return null;
-    }
-  }
-
-  private Object decodeByteBuffer(ByteBuffer byteBuffer) {
-    byte[] array = byteBuffer.array();
-    try (ByteArrayInputStream byteArrayIps =
-                 new ByteArrayInputStream(array);
-         ObjectInputStream objectIps =
-                 new ObjectInputStream(byteArrayIps)) {
-      return objectIps.readObject();
-    } catch (Exception e) {
-      log.error("decode an exception occurs:{}", byteBuffer, e);
-      return null;
     }
   }
 }
