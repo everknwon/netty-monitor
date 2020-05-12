@@ -187,11 +187,13 @@ public final class NettyMonitor {
   }
 
   private void loadPropsOrYaml(Environment bootConfEnv, Map<String, String> constField) {
-    //Properties are configured by default, and the properties loaded by default are application.properties
+    /** Properties are configured by default, and the properties loaded
+     *  by default are application.properties. */
     constField.keySet().forEach(key ->
             Optional.ofNullable(System.getProperty(constField.get(key)))
                     .ifPresent(property -> bootConfEnv.add(key, property)));
-    //If there is no properties configuration, the yaml format is used, and the default yaml loaded is application.yml
+    /** If there is no properties configuration, the yaml format is
+     * used, and the default yaml loaded is application.yml*/
     if (bootConfEnv.isEmpty()) {
       Optional.ofNullable(PropertyUtils.yaml(PATH_CONFIG_YAML))
               .ifPresent(yamlConfigTreeMap ->
@@ -200,6 +202,11 @@ public final class NettyMonitor {
     }
   }
 
+  /**
+   * Block the current service thread through count Down Latch
+   *
+   * @return
+   */
   public NettyMonitor await() {
     if (!this.started) {
       throw new IllegalStateException("Server hasn't been started. Call start() before calling this method.");
