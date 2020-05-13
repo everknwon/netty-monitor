@@ -142,6 +142,13 @@ public final class NettyMonitor {
     return Executors.newCachedThreadPool(monitorThreadFactory);
   }
 
+  /**
+   * start tcp server and load config
+   *
+   * @param bootCls
+   * @param args
+   * @param <T>
+   */
   public <T> void start(Class<T> bootCls, String[] args) {
     try {
       this.bootName = bootCls.getName();
@@ -156,6 +163,13 @@ public final class NettyMonitor {
     this.started = true;
   }
 
+  /**
+   * start server thread
+   *
+   * @param bootCls
+   * @param <T>
+   * @return
+   */
   private <T> Runnable openTcpConnection(Class<T> bootCls) {
     return () -> {
       try {
@@ -171,6 +185,12 @@ public final class NettyMonitor {
     };
   }
 
+  /**
+   * load config, support main args and application.yml
+   * and application.properties
+   *
+   * @throws IllegalAccessException
+   */
   private void loadConfig() throws IllegalAccessException {
     String bootConf = this.environment.get(PATH_SERVER_BOOT_CONFIG, PATH_CONFIG_PROPERTIES);
 
@@ -186,6 +206,12 @@ public final class NettyMonitor {
     }
   }
 
+  /**
+   * if there is no properties, load yaml
+   *
+   * @param bootConfEnv
+   * @param constField
+   */
   private void loadPropsOrYaml(Environment bootConfEnv, Map<String, String> constField) {
     /** Properties are configured by default, and the properties loaded
      *  by default are application.properties. */
