@@ -158,20 +158,7 @@ public final class NettyMonitor {
       log.error("An exception occurred while loading the configuration", e);
     }
     final String threadName = this.environment.get(PATH_APP_THREAD_NAME, SERVER_THREAD_NAME);
-    final Thread bootThread = new Thread(openTcpConnection(bootCls), threadName);
-    this.singleExecutor.execute(bootThread);
-    this.started = true;
-  }
-
-  /**
-   * start server thread
-   *
-   * @param bootCls
-   * @param <T>
-   * @return
-   */
-  private <T> Runnable openTcpConnection(Class<T> bootCls) {
-    return () -> {
+    final Thread bootThread = new Thread(() -> {
       try {
         this.bootCls = bootCls;
         this.nettyServer.start(this);
@@ -182,7 +169,9 @@ public final class NettyMonitor {
       } catch (Exception e) {
         log.error("An exception occurred while the service started", e);
       }
-    };
+    }, threadName);
+    this.singleExecutor.execute(bootThread);
+    this.started = true;
   }
 
   /**
